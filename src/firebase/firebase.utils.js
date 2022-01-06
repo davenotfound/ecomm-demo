@@ -1,5 +1,11 @@
 import firebase from "firebase/compat/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import "firebase/compat/firestore";
 
 const config = {
@@ -12,14 +18,47 @@ const config = {
   measurementId: "G-WKQXRZSVLP",
 };
 
-firebase.initializeApp(config);
+export const createUserProfileDoc = async (userAuth, additionalData) => {
+  if (!userAuth) {
+    return;
+  }
 
-export const auth = getAuth();
+  const userRef = firestore.doc(`users/${userAuth.uid}`);
+  const snapShot = await userRef.get();
+
+  if (!snapShot.exists) {
+    const { displayName, email } = userAuth;
+    const createdAt = new Date();
+
+    try {
+      await userRef.set({
+        displayName,
+        email,
+        createdAt,
+        ...additionalData,
+      });
+    } catch (error) {
+      console.log("error creating user", error.message);
+    }
+  }
+
+  return userRef;
+};
+
+const app = firebase.initializeApp(config);
+
+export const auth = getAuth(app);
+auth.tenantId = null;
+
 export const firestore = firebase.firestore();
 
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
 export const signInWithGoogle = () => signInWithPopup(auth, provider);
+export const signInWithEmailPassword = (email, password) =>
+  signInWithEmailAndPassword(auth, email, password);
+export const signUpWithEmailAndPassword = (email, password) =>
+  createUserWithEmailAndPassword(auth, email, password);
 
 export default firebase;
